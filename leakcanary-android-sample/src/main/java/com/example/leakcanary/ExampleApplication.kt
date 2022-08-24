@@ -20,6 +20,10 @@ import android.app.Dialog
 import android.app.Service
 import android.os.StrictMode
 import android.view.View
+import leakcanary.EventListener
+import leakcanary.EventListener.Event.HeapAnalysisDone
+import leakcanary.LeakCanary
+import org.leakcanary.internal.LeakUiAppClient
 
 open class ExampleApplication : Application() {
   val leakedViews = mutableListOf<View>()
@@ -29,6 +33,17 @@ open class ExampleApplication : Application() {
   override fun onCreate() {
     super.onCreate()
     enabledStrictMode()
+
+    // TODO This doesn't compile in release mode where there's no LeakCanary.
+    LeakCanary.config = LeakCanary.config.run {
+      copy(eventListeners = eventListeners + EventListener {
+        // TODO Move this into an EventListener class, maybe the standard one
+        //  TODO Detect if app installed or not and delegate to std leakcanary if not.
+        if (it is HeapAnalysisDone<*>) {
+          LeakUiAppClient(this@ExampleApplication).sendHeapAnalysis(it.heapAnalysis)
+        }
+      })
+    }
   }
 
   private fun enabledStrictMode() {
